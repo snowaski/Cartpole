@@ -11,6 +11,10 @@ for l, layer in enumerate(list[1:], start=1):
     a = 5
     print(l, " " ,layer)
 print(a)
+
+test = np.array([[1]])
+print(np.average(test, axis=0, weights=np.array([3, 2, 5])))
+
 env = gym.make('CartPole-v0')
 print("Action Space: ",env.action_space.n)
 print("Observation Space: ", env.observation_space)
