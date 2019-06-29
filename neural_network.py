@@ -1,21 +1,5 @@
 import numpy as np
 
-class Node:
-    def __init__(self, z=0, w=None):
-        """Creates a new node object.
-        
-        Parameters:
-        z(float) -- the weighted sum of the previous layer
-        weights(numpy array) -- the weights from the prvious layer connected to the node
-
-        Defined Attributes:
-        a(float) -- the value from putting z through an activation function
-        """
-
-        self.z = z
-        self.w = w
-        self.a = max(0, z)
-
 class Neural_Network:
     def __init__(self, inputs, bellman, lr):
         """Initializes the network and adds the input layer.
@@ -32,11 +16,12 @@ class Neural_Network:
         self.bellman(float) -- the optimal Q value? *******
         self.lr(float) -- the learning rate
         """
-        #creates a Node for each input data
         self.weights = []
         self.values = []
+        self.biases = []
         self.weights.append(np.array([None for _ in range(len(inputs))]))
         self.values.append(np.array(inputs)) 
+        self.biases.append(np.array([None for _ in range(len(inputs))]))
 
         self.layers = 1
         self.act_func = lambda x: max(0, x)
@@ -53,6 +38,7 @@ class Neural_Network:
         new_layer = np.zeros(num_nodes)
         prev_layer_length = len(self.values[self.layers-1])
         self.values.append(np.zeros(num_nodes))
+        self.values.append(np.array([np.zeros(num_nodes) for _ in range(num_nodes)]))
         for i in range(num_nodes):
             #normalzies the weights
             w = np.random.randn(prev_layer_length) * (1/prev_layer_length)**.5 
@@ -65,14 +51,15 @@ class Neural_Network:
         """Goes through one epoch of a training sample by feeding the data forward
         and then updating the weights with SGD.
         """
-        #computes the weighted sum of the previous later for each node and 
-        #puts is through the activation function
+        z_values = []
+        #computes the weighted sum with a bias of the previous later for each node
         for l, layer in enumerate(self.values[1:], start=1):
-            for n, z in enumerate(layer):
-                sum = 0
-                for i, w in enumerate(self.weights[l][n]):
-                    sum += w*self.values[l-1][i]
-                self.values[l][n] = self.act_func(sum)
+            z = self.weights[l].dot(self.values[l-1]) + self.biases[l]
+            z_values.append(z)
+
+        #puts the z values through an activation function
+        for i, v in enumerate(self.values[1:], start=1):
+            self.values[i] = np.maximum(v, np.zeros(len(v)))
         
         errors = np.zeros(self.layers)
 
@@ -84,11 +71,12 @@ class Neural_Network:
         while(l > 0):
             errors[i] = ((self.weights[l+1]).T*errors[l+1]).dot(values[l])
         
-        #updates the weights
+        #updates the weights and biases 
         for l, layer in enumerate(self.values[1:], start=1):
             for n, z in enumerate(layer):
-                for i,w in enumerate(self.weights[l][n]):
-                    self.weights[l][i] = w - (self.lr * errors[l] * values[l-1])
+                for i, pair in enumerate(zip(list(self.weights[l][n]), list(self.biases[l][n]))):
+                    self.weights[l][n][i] = pair[0] - (self.lr * errors[l] * values[l-1])
+                    self.biases[l][n][i] = pair[1] -  self.lr * errors[l]
         
 
                 
