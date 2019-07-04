@@ -19,6 +19,7 @@ class Neural_Network:
         self.act_func(function) -- the activation function rel_u
         self.lr(float) -- the learning rate
         self.discount(float) -- the discount rate
+        self.greedy(int) -- the action with the higest q value
         """
         #initializes the policy network
         self.weights = []
@@ -35,6 +36,7 @@ class Neural_Network:
         self.lr = lr
         self.discount = discount
 
+
     def add_layer(self, num_nodes):
         """Adds a new layer to the network with weights randomized according to the normal
         distribution N(0, 1/n) and biases set to 0. Increments self.layers.
@@ -42,14 +44,14 @@ class Neural_Network:
         Parameters:
         num_nodes(int) -- the number of nodes in the new layer
         """
-        new_layer = np.zeros(num_nodes)
-        prev_layer_length = len(self.values[self.layers-1])
-        self.biases.append(np.array([np.zeros(num_nodes) for _ in range(num_nodes)]))
+        new_layer = [[] for _ in range(num_nodes)]
+        prev_layer_length = len(self.weights[self.layers-1])
+        self.biases.append(np.zeros(num_nodes))
         for i in range(num_nodes):
             #normalzies the weights
             w = np.random.randn(prev_layer_length) * (1/prev_layer_length)**.5 
             new_layer[i] = w
-        self.weights.append(new_layer)
+        self.weights.append(np.array(new_layer))
 
         #updates the target network
         self.t_weights = copy.deepcopy(self.weights)
@@ -61,7 +63,7 @@ class Neural_Network:
         self.t_weights = copy.deepcopy(self.weights)
         self.t_biases = copy.deepcopy(self.biases)
 
-    def epoch(self, batches):
+    def epoch(self, batch):
         """Goes through one epoch of a training sample by feeding the data forward
         and then updating the weights with SGD.
 
@@ -70,13 +72,14 @@ class Neural_Network:
         """
         activations_for_batch = []
         errors_for_batch = []
-        for batch, data_set in enumerate(batches):
+        for b, data_set in enumerate(batch):
+            state = data_set[0]
             #sets the z and activation values of the first layer for the policy network
-            z_values = [[x[0] for x in data_set]]
-            a_values = [[act_func(x[0]) for x in data_set]]
+            z_values = [state]
+            a_values = [np.maximum(state, np.zeros(len(state)))]
             #sets the z and activation values of the first layer for the target network
-            z_values_t = [[x[0] for x in data_set]]
-            a_values_t = [[act_func(x[0]) for x in data_set]]
+            z_values_t = [state]
+            a_values_t = [np.maximum(state, np.zeros(len(state)))]
 
             #computes the weighted sum with a bias of the previous later for each node in the policy and target networks
             for l in range(1, self.layers):
@@ -86,21 +89,23 @@ class Neural_Network:
                 z_values.append(z_policy)
                 z_values_t.append(z_target)
             
-                a_values.append(np.maximum(z_policy, np.zeros(len(z_policy))))
-                a_values_t.append(np.maximum(z_target, np.zeros(len(z_target))))
+                a_values.append(np.maximum(z_policy, np.zeros(z_policy.shape)))
+                a_values_t.append(np.maximum(z_target, np.zeros(z_target.shape)))
 
             q_optimal = np.amax(z_values[-1])
+            
             bellman = data_set[2] + self.discount * q_optimal
-            errors = np.zeros(self.layers)
+            errors = [[] for _ in range(self.layers)]
 
-            #find the error in the output layer
-            errors[-1] = (a_values[-1] - bellman).dot(a_values[-1])
+            #finds the error in the output layer
+            errors[-1] = (a_values[-1] - bellman) * a_values[-1]
 
             #finds the errors of the other layers by calculating the loss
             l = self.layers - 2
             while(l > 0):
-                errors[i] = ((self.weights[l+1]).T*errors[l+1]).dot(a_values[l])
-            
+                errors[l] = (self.weights[l+1].T.dot(errors[l+1])) * a_values[l]
+                l -= 1
+
             errors_for_batch.append(errors)
             activations_for_batch.append(a_values)
         
@@ -109,14 +114,26 @@ class Neural_Network:
         while(l > 0):
             sum_weights = 0
             sum_biases = 0
-            for x, training_set in enumerate(batches):
-                sum_weights += errors_for_batch[x][l] * activations_for_batch[x][l-1]
+            for x, training_set in enumerate(batch):
+                sum_weights += errors_for_batch[x][l].reshape(errors_for_batch[x][l].shape[0],1).dot((activations_for_batch[x][l-1].reshape(1, activations_for_batch[x][l-1].shape[0])))
                 sum_biases += errors_for_batch[x][l]
-            self.weights[l] = self.weights[l] - self.lr * sum_weights / len(batches)
-            self.biases[l] = self.biases[l] - self.lr * sum_biases / len(batches)
-        
-    def generate_batches(self, inputs, batch_size):
-        batches = [input[i * batch_size:(i + 1) * batch_size] for i in range((len(inputs) + batch_size - 1) // batch_size)]
+            self.weights[l] = self.weights[l] - self.lr * sum_weights / len(batch)
+            self.biases[l] = self.biases[l] - self.lr * sum_biases / len(batch)
+            l -= 1
+
+    def return_max_q(self, state):
+        a_values = [np.maximum(state, np.zeros(len(state)))]
+        output = []
+        #computes the weighted sum with a bias of the previous later for each node in the policy and target networks
+        for l in range(1, self.layers):
+            z = self.weights[l].dot(a_values[l-1]) + self.biases[l]
+            
+            a_values.append(np.maximum(z, np.zeros(z.shape)))
+
+            if l == self.layers - 1:
+                output = z
+
+        return np.argmax(output)
 
                 
     
