@@ -68,7 +68,7 @@ class Neural_Network:
         and then updating the weights with SGD.
 
         Parameters:
-        batches(list of tuples of (st, at, rt+1, st+1)) -- a batch of replay memory
+        batches(list of tuples of (s_t, a_t, r_t+1, s_t+1)) -- a batch of replay memory
         """
         activations_for_batch = []
         errors_for_batch = []
@@ -91,10 +91,8 @@ class Neural_Network:
             
                 a_values.append(np.maximum(z_policy, np.zeros(z_policy.shape)))
                 a_values_t.append(np.maximum(z_target, np.zeros(z_target.shape)))
-
-            q_optimal = np.amax(z_values[-1])
             
-            bellman = data_set[2] + self.discount * q_optimal
+            bellman = data_set[2] + self.discount * self.return_max_q(data_set[3])
             errors = [[] for _ in range(self.layers)]
 
             #finds the error in the output layer
@@ -122,6 +120,15 @@ class Neural_Network:
             l -= 1
 
     def return_max_q(self, state):
+        """
+        Runs the state through the network to determine the action with the maximum q value
+
+        Parameters:
+        state(np array) -- the current state
+
+        Returns:
+        the action with the maximum q value
+        """
         a_values = [np.maximum(state, np.zeros(len(state)))]
         output = []
         #computes the weighted sum with a bias of the previous later for each node in the policy and target networks
