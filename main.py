@@ -2,6 +2,7 @@ import gym
 import numpy as np
 import neural_network as nn
 import random
+import time
 
 env = gym.make('CartPole-v0')
 
@@ -42,7 +43,10 @@ for episode in range(num_episodes):
     current_reward = 0
 
     for step in range(max_steps):
-        # env.render()
+        
+        # if (total_steps > 10000):
+        #     env.render()
+        #     time.sleep(0.2)
         #updates the target network
         if total_steps % num_steps_until_reset_target == 0:
             network.update_target_network()
@@ -69,6 +73,8 @@ for episode in range(num_episodes):
             network.epoch(batch)
 
         current_reward += reward
+
+        state = new_state
 
         if done == True:
             break
