@@ -6,12 +6,12 @@ import random
 env = gym.make('CartPole-v0')
 
 #hyperparameters
-learning_rate = .001
+learning_rate = 0.0005
 discount_rate = .99
 max_steps = 500
-num_episodes = 10000
-num_steps_until_reset_target = 500
-batch_size = 300
+num_episodes = 100000
+num_steps_until_reset_target = 5000
+batch_size = 100
 
 #exploration rate values
 eps = 1
@@ -22,6 +22,7 @@ eps_decay_rate = 0.001
 #initialize replay memory
 replay_memory = []
 replay_memory_size = 5000
+push_count = 0
 
 #initializes the networks
 network = nn.Neural_Network(4, learning_rate, discount_rate)
@@ -34,8 +35,8 @@ rewards = []
 avg = 0
 
 for episode in range(num_episodes):
-    if episode % 200 == 0:
-        print(episode)
+    # if episode % 200 == 0:
+    #     print(episode)
     state = env.reset()
     done = False
     current_reward = 0
@@ -56,16 +57,15 @@ for episode in range(num_episodes):
         new_state, reward, done, info = env.step(action)
 
         #store in replay memory
-        if len(replay_memory) == replay_memory_size:
-            replay_memory.pop()
-        replay_memory.append((state, action, reward, new_state))
-
-        if len(replay_memory) < batch_size:
-            batch = replay_memory
+        if len(replay_memory) < replay_memory_size:
+             replay_memory.append((state, action, reward, new_state, done))
         else:
-            batch = random.sample(replay_memory, batch_size)
+            replay_memory[push_count % replay_memory_size] = (state, action, reward, new_state, done)
+        push_count += 1
 
-        network.epoch(batch)
+        if len(replay_memory) >= batch_size:
+            batch = random.sample(replay_memory, batch_size)
+            network.epoch(batch)
 
         current_reward += reward
 
@@ -81,20 +81,20 @@ for episode in range(num_episodes):
         rewards.append(current_reward)
 
 #displays a taxi game with final q values
-state = env.reset()
-total_rewards = 0
-for _ in range(max_steps):
-    env.render()
-    action = network.return_max_q(state)
+# state = env.reset()
+# total_rewards = 0
+# for _ in range(max_steps):
+#     env.render()
+#     action = network.return_max_q(state)
 
-    new_state, reward, done, info = env.step(action)
+#     new_state, reward, done, info = env.step(action)
 
-    state = new_state
-    total_rewards += reward
+#     state = new_state
+#     total_rewards += reward
 
-    if done:
-        print("Score: ", total_rewards)
-        break
+#     if done:
+#         print("Score: ", total_rewards)
+#         break
         
 env.close()
 # rewards = np.array(rewards)
