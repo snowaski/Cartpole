@@ -2,6 +2,7 @@ import gym
 import numpy as np
 import neural_network as nn
 import random
+import time
 
 env = gym.make('CartPole-v0')
 
@@ -10,8 +11,8 @@ learning_rate = 0.0005
 discount_rate = .99
 max_steps = 500
 num_episodes = 100000
-num_steps_until_reset_target = 5000
-batch_size = 100
+num_steps_until_reset_target = 50000
+batch_size = 50
 
 #exploration rate values
 eps = 1
@@ -21,8 +22,7 @@ eps_decay_rate = 0.001
 
 #initialize replay memory
 replay_memory = []
-replay_memory_size = 5000
-push_count = 0
+replay_memory_size = 50000
 
 #initializes the networks
 network = nn.Neural_Network(4, learning_rate, discount_rate)
@@ -33,18 +33,22 @@ network.add_layer(2)
 
 rewards = []
 avg = 0
+total_steps = 0
 
 for episode in range(num_episodes):
     # if episode % 200 == 0:
-    #     print(episode)
+    # print(episode)
     state = env.reset()
     done = False
     current_reward = 0
 
     for step in range(max_steps):
-        # env.render()
+        
+        # if (total_steps > 10000):
+        #     env.render()
+        #     time.sleep(0.2)
         #updates the target network
-        if step % num_steps_until_reset_target == 0:
+        if total_steps % num_steps_until_reset_target == 0:
             network.update_target_network()
 
         #Selects action via exploration or exploitation
@@ -56,18 +60,21 @@ for episode in range(num_episodes):
         #execute selected action
         new_state, reward, done, info = env.step(action)
 
+        experience = (state, action, reward, new_state, done)
         #store in replay memory
         if len(replay_memory) < replay_memory_size:
-             replay_memory.append((state, action, reward, new_state, done))
+             replay_memory.append(experience)
         else:
-            replay_memory[push_count % replay_memory_size] = (state, action, reward, new_state, done)
-        push_count += 1
+            replay_memory[total_steps % replay_memory_size] = experience
+        total_steps += 1
 
         if len(replay_memory) >= batch_size:
             batch = random.sample(replay_memory, batch_size)
             network.epoch(batch)
 
         current_reward += reward
+
+        state = new_state
 
         if done == True:
             break

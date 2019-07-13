@@ -72,14 +72,12 @@ class Neural_Network:
         and then updating the weights with SGD.
 
         Parameters:
-        batches(list of tuples of (s_t, a_t, r_t+1, s_t+1)) -- a batch of replay memory
+        batches(list of tuples of (s_t, a_t, r_t+1, s_t+1, done)) -- a batch of replay memory
         """
-        # activations_for_batch = []
-        # errors_for_batch = []
 
         gradient_b = [np.zeros(b.shape) for b in self.biases]
         gradient_w = [np.zeros(w.shape) for w in self.weights]
-        for b, data_set in enumerate(batch):
+        for data_set in batch:
             delta_gradient_b, delta_gradient_w = self.backprop(data_set)
             gradient_b = [nb+dnb for nb, dnb in zip(gradient_b, delta_gradient_b)]
             gradient_w = [nw+dnw for nw, dnw in zip(gradient_w, delta_gradient_w)]
@@ -95,30 +93,21 @@ class Neural_Network:
         #forward propogation
         a_values, z_values = self.feedforward(x[0])
 
-        #determins the training labels by passing the next state to the target network,
-        #determining the action with the max q value and setting that label to the bellman
-        #equation and all others to their previous q values for an error of 0
-        next_state_output = self.return_target_q(x[3])
         max_q_index = np.argmax(z_values[-1])
-        # y = np.zeros(len(next_state_output))
-        # for i in range(len(next_state_output)):
-        #     if i == max_q_index:
-        #         y[i] = x[2] + self.discount * next_state_output[i]
-        #     else:
-        #         y[i] = z_values[-1][i]
-        # if x[4]:
-        #     y = -1
-        # else:
-        y = x[2] + self.discount * next_state_output[max_q_index]
 
-        # y = x[2] + self.discount * np.amax(next_state_output)
+        if x[4]:
+            y = x[2]
+        else:
+            next_state_output = self.return_target_q(x[3])
+            y = x[2] + self.discount * next_state_output[max_q_index]
+
         #backward pass
         error = (z_values[-1][max_q_index] - y) * self.relu_prime(z_values[-1])
 
         gradient_b[-1] = error
         gradient_w[-1] = np.dot(error.reshape(error.shape[0], 1), a_values[-2].reshape(1, a_values[-2].shape[0]))
 
-        for l in range(2, self.layers-1):
+        for l in range(2, self.layers):
             error = (self.weights[-l+1].T.dot(error)) * self.relu_prime(z_values[-l])
             gradient_b[-l] = error
             gradient_w[-l] = np.dot(error.reshape(error.shape[0], 1), a_values[-l-1].reshape(1, a_values[-l-1].shape[0]))
@@ -140,18 +129,18 @@ class Neural_Network:
 
     def feedforward(self, state, network="policy"):
         if network == "policy":
-            w = self.weights
-            b = self.biases
+            weights = self.weights
+            biases = self.biases
         else:
-            w = self.t_weights
-            b = self.t_biases
+            weights = self.t_weights
+            biases = self.t_biases
         activation = state
         a_values = [state]
         z_values = []
 
         #computes the weighted sum with a bias of the previous later for each node in the policy and target networks
-        for l in range(self.layers-1):
-            z_policy = w[l].dot(activation) + b[l]
+        for w, b in zip(weights, biases):
+            z_policy = w.dot(activation) + b
 
             z_values.append(z_policy)
             activation = np.maximum(z_policy, np.zeros(z_policy.shape))
