@@ -35,8 +35,8 @@ rewards = []
 avg = 0
 
 for episode in range(num_episodes):
-    if episode % 200 == 0:
-        print(episode)
+    # if episode % 200 == 0:
+    #     print(episode)
     state = env.reset()
     done = False
     current_reward = 0
