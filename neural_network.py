@@ -99,21 +99,21 @@ class Neural_Network:
         #determining the action with the max q value and setting that label to the bellman
         #equation and all others to their previous q values for an error of 0
         next_state_output = self.return_target_q(x[3])
-        max_q_index = np.argmax(next_state_output)
+        max_q_index = np.argmax(z_values[-1])
         # y = np.zeros(len(next_state_output))
         # for i in range(len(next_state_output)):
         #     if i == max_q_index:
         #         y[i] = x[2] + self.discount * next_state_output[i]
         #     else:
         #         y[i] = z_values[-1][i]
-        if x[4]:
-            y = -1
-        else:
-            y = x[2] + self.discount * np.amax(next_state_output)
+        # if x[4]:
+        #     y = -1
+        # else:
+        y = x[2] + self.discount * next_state_output[max_q_index]
 
         # y = x[2] + self.discount * np.amax(next_state_output)
         #backward pass
-        error = (z_values[-1] - y) * self.relu_prime(z_values[-1])
+        error = (z_values[-1][max_q_index] - y) * self.relu_prime(z_values[-1])
 
         gradient_b[-1] = error
         gradient_w[-1] = np.dot(error.reshape(error.shape[0], 1), a_values[-2].reshape(1, a_values[-2].shape[0]))
